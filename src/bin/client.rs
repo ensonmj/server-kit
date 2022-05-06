@@ -1,4 +1,7 @@
+use anyhow::Result;
 use opentelemetry::global;
+use serde_derive::Deserialize;
+use server_kit::conf;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -7,13 +10,21 @@ use server_kit::logger;
 use server_kit::nshead;
 use server_kit::tracer;
 
+#[derive(Deserialize)]
+struct Conf {
+    pub port: u32,
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     dotenv::dotenv().ok();
     let tracer = tracer::init()?;
     logger::init(tracer);
 
-    process().await?;
+    let conf: Conf = conf::read_conf("./conf/conf.toml").await?;
+    let addr = format!("127.0.0.1:{}", conf.port);
+
+    process(&addr).await?;
 
     // sending remaining spans
     global::shutdown_tracer_provider();
@@ -21,14 +32,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tracing::instrument(name = "client")]
-async fn process() -> Result<(), Box<dyn std::error::Error>> {
+async fn process(addr: &str) -> Result<()> {
     let payload = b"hello";
     let mut head = nshead::Nshead::default();
     head.body_len = payload.len() as u32;
     tracing::debug!("header[{:?}]", &head);
     let head = head.as_u8_slice();
 
-    let mut stream = TcpStream::connect(&"127.0.0.1:8787").await?;
+    let mut stream = TcpStream::connect(addr).await?;
     tracing::debug!("Successfully connected to server");
 
     stream.write_all(head).await?;
@@ -41,7 +52,11 @@ async fn process() -> Result<(), Box<dyn std::error::Error>> {
     let head = nshead::Nshead::from_u8_slice(&data);
     if head.magic_num != nshead::NSHEAD_MAGICNUM {
         tracing::warn!("Unexpected header: {:?}", head);
-        return Err(format!("unexpected header magic_num[{}]", head.magic_num).into());
+        return Err(server_kit::Error::MagicNum(format!(
+            "unexpected header magic_num[{}]",
+            head.magic_num
+        ))
+        .into());
     }
     tracing::debug!("Receive header: {:?}", head);
 
