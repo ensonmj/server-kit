@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use futures_util::Future;
 use opentelemetry::global;
 use serde_derive::Deserialize;
 use tokio::net::TcpListener;
@@ -18,13 +19,19 @@ struct Conf {
     pub port: u32,
 }
 
-pub struct Server {
+pub struct Server<Fut>
+where
+    Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
+{
     conf: Conf,
-    handler: Arc<Handler>,
+    handler: Arc<Handler<Fut>>,
 }
 
-impl Server {
-    pub async fn start_server(handler: Handler) -> Result<()> {
+impl<Fut> Server<Fut>
+where
+    Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
+{
+    pub async fn start_server(handler: Handler<Fut>) -> Result<()> {
         dotenv::dotenv().ok();
         let tracer = tracer::init()?;
         logger::init(tracer);

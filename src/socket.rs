@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use bytes::BytesMut;
+use futures_util::Future;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -11,24 +12,33 @@ use crate::handler::Handler;
 use crate::Result;
 
 #[derive(Default)]
-pub struct Socket {
+pub struct Socket<Fut>
+where
+    Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
+{
     pub stream: Option<TcpStream>,
 
     pub read_buf: Vec<u8>,
     pub msg_buf: Vec<u8>,
 
-    handler: Option<Arc<Handler>>,
+    handler: Option<Arc<Handler<Fut>>>,
 }
 
-impl Socket {
+impl<Fut> Socket<Fut>
+where
+    Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
+{
     pub fn new(stream: TcpStream) -> Self {
         Self {
             stream: Some(stream),
-            ..Default::default()
+            read_buf: Default::default(),
+            msg_buf: Default::default(),
+            handler: None,
+            // ..Default::default()
         }
     }
 
-    pub fn with_handler(&mut self, h: Arc<Handler>) {
+    pub fn with_handler(&mut self, h: Arc<Handler<Fut>>) {
         self.handler = Some(h);
     }
 
@@ -39,7 +49,7 @@ impl Socket {
         debug!("{buffer:?}");
         let buf = self.handler.as_ref().unwrap().parse(&buffer)?;
         debug!("{buf:?}");
-        let msg = self.handler.as_ref().unwrap().process(buf)?;
+        let msg = self.handler.as_ref().unwrap().process(buf).await?;
 
         debug!("write message");
         Ok(self.stream.as_mut().unwrap().write_all(&msg).await?)
