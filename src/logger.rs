@@ -11,7 +11,12 @@ pub fn init(tracer: Tracer) {
     // Initialize `tracing` using `opentelemetry-tracing` and configure logging
     Registry::default()
         .with(tracing_subscriber::EnvFilter::from_default_env())
-        .with(tracing_subscriber::fmt::layer().with_timer(timer))
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_file(true)
+                .with_line_number(true)
+                .with_timer(timer),
+        )
         .with(tracing_opentelemetry::layer().with_tracer(tracer))
         .init();
 }

@@ -1,7 +1,9 @@
-use opentelemetry::{sdk::trace::Tracer, trace::TraceError};
+use opentelemetry::sdk::trace::Tracer;
 
-pub fn init() -> Result<Tracer, TraceError> {
-    opentelemetry_jaeger::new_pipeline()
+use crate::Result;
+
+pub fn init() -> Result<Tracer> {
+    Ok(opentelemetry_jaeger::new_pipeline()
         .with_service_name("server-kit")
-        .install_batch(opentelemetry::runtime::Tokio)
+        .install_batch(opentelemetry::runtime::Tokio)?)
 }

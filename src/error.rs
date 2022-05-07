@@ -9,4 +9,5 @@ pub enum Error {
     /// Io error from tcp
     Io(#[from] std::io::Error),
     Toml(#[from] toml::de::Error),
+    TraceErr(#[from] opentelemetry::trace::TraceError),
 }

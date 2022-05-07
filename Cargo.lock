@@ -537,6 +537,7 @@ name = "server-kit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "dotenv",
  "futures-util",
  "opentelemetry",
