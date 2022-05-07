@@ -1,3 +1,4 @@
+pub mod channel;
 pub mod conf;
 mod error;
 mod handler;

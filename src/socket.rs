@@ -32,7 +32,7 @@ impl Socket {
         self.handler = Some(h);
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "worker", skip_all)]
     pub async fn process(&mut self) -> Result<()> {
         let mut buffer = BytesMut::with_capacity(4096);
         self.stream.as_mut().unwrap().read_buf(&mut buffer).await?;

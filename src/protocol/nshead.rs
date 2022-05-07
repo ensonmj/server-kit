@@ -89,7 +89,23 @@ impl Protocol for Nshead {
         Ok(buf.to_vec())
     }
 
+    #[instrument(skip_all)]
     fn pack_response(&self, buf: &[u8]) -> Vec<u8> {
+        let mut buffer = BytesMut::with_capacity(NSHEAD_LEN + buf.len());
+        let head = Self::default_with_len(buf.len() as u32);
+        buffer.put(head.as_u8_slice());
+        buffer.put(buf);
+
+        buffer.to_vec()
+    }
+
+    #[instrument(skip_all)]
+    fn process_response(&self, _buf: &[u8]) -> Result<()> {
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    fn pack_request(&self, buf: &[u8]) -> Vec<u8> {
         let mut buffer = BytesMut::with_capacity(NSHEAD_LEN + buf.len());
         let head = Self::default_with_len(buf.len() as u32);
         buffer.put(head.as_u8_slice());

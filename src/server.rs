@@ -4,7 +4,6 @@ use opentelemetry::global;
 use serde_derive::Deserialize;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
-use tracing::instrument;
 use tracing::{debug, error, warn};
 
 use crate::conf;
@@ -59,10 +58,7 @@ impl Server {
         Ok(())
     }
 
-    #[instrument(name = "worker", skip_all)]
     async fn process(&self, stream: TcpStream) -> Result<()> {
-        debug!("process connection");
-
         let handler = Arc::clone(&self.handler);
         if let Err(e) = tokio::spawn(async move {
             let mut socket = Socket::new(stream);

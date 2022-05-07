@@ -1,12 +1,10 @@
 use anyhow::Result;
 use opentelemetry::global;
 use serde_derive::Deserialize;
+use server_kit::channel::Channel;
 use server_kit::conf;
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
-use tokio::net::TcpStream;
+use tracing::debug;
 use tracing::instrument;
-use tracing::{debug, warn};
 
 use server_kit::logger;
 use server_kit::protocol::nshead;
@@ -26,45 +24,19 @@ async fn main() -> Result<()> {
     let conf: Conf = conf::read_conf("./conf/client.toml").await?;
     let addr = format!("127.0.0.1:{}", conf.port);
 
-    process(&addr).await?;
+    let protocol = Box::new(nshead::Nshead::default());
+    let mut channel = Channel::new(addr, protocol);
+    let buf = channel.process(echo).await?;
+    debug!("Receive data: {buf:?}");
 
     // sending remaining spans
     global::shutdown_tracer_provider();
     Ok(())
 }
 
-#[instrument(name = "client")]
-async fn process(addr: &str) -> Result<()> {
+#[instrument(skip_all)]
+async fn echo() -> server_kit::Result<Vec<u8>> {
     let payload = b"hello";
-    let mut head = nshead::Nshead::default();
-    head.body_len = payload.len() as u32;
-    debug!("header[{:?}]", &head);
-    let head = head.as_u8_slice();
-
-    let mut stream = TcpStream::connect(addr).await?;
-    debug!("Successfully connected to server");
-
-    stream.write_all(head).await?;
-    debug!("Sent header...");
-    stream.write_all(payload).await?;
-    debug!("Sent payload...");
-
-    let mut data = [0; nshead::NSHEAD_LEN];
-    stream.read_exact(&mut data).await?;
-    let head = nshead::Nshead::from_u8_slice(&data);
-    if head.magic_num != nshead::NSHEAD_MAGICNUM {
-        warn!("Unexpected header: {:?}", head);
-        return Err(server_kit::Error::MagicNum(format!(
-            "unexpected header magic_num[{}]",
-            head.magic_num
-        ))
-        .into());
-    }
-    debug!("Receive header: {:?}", head);
-
-    let mut payload = vec![0; head.body_len as usize];
-    stream.read_exact(&mut payload).await?;
-    debug!("Receive data:[{:?}]", payload);
-
-    Ok(())
+    debug!("Send data:{payload:?}");
+    Ok(payload.to_vec())
 }

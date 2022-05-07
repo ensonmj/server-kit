@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
     let handler = Handler::new(
         Box::new(p),
         Box::new(|buf| {
-            debug!("write message");
+            debug!("process message");
             Ok(buf.to_vec())
         }),
     );
