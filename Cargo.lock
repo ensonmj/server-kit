@@ -91,6 +91,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
+name = "echo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "opentelemetry",
+ "serde",
+ "serde_derive",
+ "server-kit",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -536,7 +549,6 @@ dependencies = [
 name = "server-kit"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bytes",
  "dotenv",
  "futures-util",
@@ -675,9 +687,9 @@ checksum = "42657b1a6f4d817cda8e7a0ace261fe0cc946cf3a80314390b22cc61ae080792"
 
 [[package]]
 name = "tokio"
-version = "1.18.0"
+version = "1.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f48b6d60512a392e34dbf7fd456249fd2de3c83669ab642e021903f4015185b"
+checksum = "dce653fb475565de9f6fb0614b28bca8df2c430c0cf84bcd9c843f15de5414cc"
 dependencies = [
  "bytes",
  "libc",

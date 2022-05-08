@@ -1,0 +1,13 @@
+[package]
+name = "echo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.57"
+opentelemetry = "0.17.0"
+serde = "1.0.137"
+serde_derive = "1.0.137"
+server-kit = { path = "../../server-kit" }
+tokio = { version = "1.18.1", features = ["full"] }
+tracing = "0.1.34"
