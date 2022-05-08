@@ -1,9 +1,15 @@
 use std::path::Path;
 
 use serde::de::DeserializeOwned;
+use serde_derive::Deserialize;
 use tokio::{fs::File, io::AsyncReadExt};
 
 use crate::Result;
+
+#[derive(Deserialize)]
+pub struct Conf {
+    pub port: u32,
+}
 
 pub async fn read_conf<T>(path: impl AsRef<Path>) -> Result<T>
 where

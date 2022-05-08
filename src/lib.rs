@@ -1,6 +1,7 @@
 pub mod channel;
 pub mod conf;
 mod error;
+pub mod global;
 mod handler;
 pub mod logger;
 pub mod protocol;
