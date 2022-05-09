@@ -100,8 +100,8 @@ impl Protocol for Nshead {
     }
 
     #[instrument(skip_all)]
-    fn process_response(&self, _buf: &[u8]) -> Result<()> {
-        Ok(())
+    fn process_response(&self, buf: &[u8]) -> Result<Vec<u8>> {
+        Ok(buf.to_vec())
     }
 
     #[instrument(skip_all)]

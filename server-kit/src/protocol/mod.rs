@@ -15,11 +15,10 @@ pub trait Protocol {
     }
 
     // for channel
-    fn process_response(&self, _buf: &[u8]) -> Result<()> {
+    fn pack_request(&self, _buf: &[u8]) -> Vec<u8> {
         unimplemented!()
     }
-
-    fn pack_request(&self, _buf: &[u8]) -> Vec<u8> {
+    fn process_response(&self, _buf: &[u8]) -> Result<Vec<u8>> {
         unimplemented!()
     }
 }

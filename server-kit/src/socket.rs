@@ -45,13 +45,19 @@ where
 
     #[instrument(name = "worker", skip_all, fields(remote_addr = %self.addr))]
     pub async fn process(&mut self) -> Result<()> {
+        // read request
         let mut buffer = BytesMut::with_capacity(4096);
         self.stream.read_buf(&mut buffer).await?;
         debug!("{buffer:?}");
+
+        // parse request
         let buf = self.handler.as_ref().unwrap().parse(&buffer)?;
         debug!("{buf:?}");
+
+        // process request
         let msg = self.handler.as_ref().unwrap().process(buf).await?;
 
+        // write response
         debug!("write message");
         Ok(self.stream.write_all(&msg).await?)
     }
