@@ -3,7 +3,6 @@ pub mod conf;
 mod error;
 pub mod global;
 mod handler;
-pub mod logger;
 pub mod protocol;
 mod server;
 pub mod socket;

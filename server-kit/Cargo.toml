@@ -22,3 +22,4 @@ tracing-subscriber = { version = "0.3", features = [
     "local-time",
     "time",
 ] }
+tracing-tree = "0.2"
