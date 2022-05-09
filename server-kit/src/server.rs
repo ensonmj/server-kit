@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -5,7 +6,9 @@ use futures_util::Future;
 use opentelemetry::global;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
-use tracing::{debug, error, warn};
+use tracing::instrument;
+use tracing::Instrument;
+use tracing::{debug, error, trace_span, warn};
 
 use crate::conf::{self, Conf};
 use crate::handler::Handler;
@@ -36,18 +39,19 @@ where
         self.handler = Some(Arc::new(handler));
     }
 
+    #[instrument(skip_all)]
     pub async fn start(&mut self) -> Result<()> {
         let addr = format!("127.0.0.1:{}", self.conf.port);
         debug!("start server on {addr}");
         let listener = TcpListener::bind(&addr).await?;
         loop {
-            match listener.accept().await {
+            match listener.accept().instrument(trace_span!("accept")).await {
                 Err(e) => {
                     error!("couldn't get client: {:?}", e);
                     break;
                 }
-                Ok((stream, _addr)) => {
-                    if let Err(e) = self.process(stream).await {
+                Ok((stream, addr)) => {
+                    if let Err(e) = self.process(addr, stream).await {
                         warn!("process err:{}", e)
                     }
                 }
@@ -60,13 +64,17 @@ where
         Ok(())
     }
 
-    async fn process(&self, stream: TcpStream) -> Result<()> {
+    #[instrument(skip_all)]
+    async fn process(&self, addr: SocketAddr, stream: TcpStream) -> Result<()> {
         let handler = Arc::clone(self.handler.as_ref().unwrap());
-        if let Err(e) = tokio::spawn(async move {
-            let mut socket = Socket::new(stream);
-            socket.with_handler(handler);
-            socket.process().await
-        })
+        if let Err(e) = tokio::spawn(
+            async move {
+                let mut socket = Socket::new(addr, stream);
+                socket.with_handler(handler);
+                socket.process().await
+            }
+            .instrument(trace_span!("worker")),
+        )
         .await
         {
             warn!("process err:{}", e)

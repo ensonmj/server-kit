@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use bytes::BytesMut;
@@ -11,12 +12,12 @@ use tracing::instrument;
 use crate::handler::Handler;
 use crate::Result;
 
-#[derive(Default)]
 pub struct Socket<Fut>
 where
     Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
 {
-    pub stream: Option<TcpStream>,
+    pub addr: SocketAddr,
+    pub stream: TcpStream,
 
     pub read_buf: Vec<u8>,
     pub msg_buf: Vec<u8>,
@@ -28,13 +29,13 @@ impl<Fut> Socket<Fut>
 where
     Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
 {
-    pub fn new(stream: TcpStream) -> Self {
+    pub fn new(addr: SocketAddr, stream: TcpStream) -> Self {
         Self {
-            stream: Some(stream),
+            addr,
+            stream,
             read_buf: Default::default(),
             msg_buf: Default::default(),
             handler: None,
-            // ..Default::default()
         }
     }
 
@@ -42,16 +43,16 @@ where
         self.handler = Some(h);
     }
 
-    #[instrument(name = "worker", skip_all)]
+    #[instrument(name = "worker", skip_all, fields(remote_addr = %self.addr))]
     pub async fn process(&mut self) -> Result<()> {
         let mut buffer = BytesMut::with_capacity(4096);
-        self.stream.as_mut().unwrap().read_buf(&mut buffer).await?;
+        self.stream.read_buf(&mut buffer).await?;
         debug!("{buffer:?}");
         let buf = self.handler.as_ref().unwrap().parse(&buffer)?;
         debug!("{buf:?}");
         let msg = self.handler.as_ref().unwrap().process(buf).await?;
 
         debug!("write message");
-        Ok(self.stream.as_mut().unwrap().write_all(&msg).await?)
+        Ok(self.stream.write_all(&msg).await?)
     }
 }
