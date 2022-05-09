@@ -3,7 +3,6 @@ use std::path::Path;
 use std::sync::Arc;
 
 use futures_util::Future;
-use opentelemetry::global;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tracing::instrument;
@@ -57,9 +56,6 @@ where
                 }
             }
         }
-
-        // sending remaining spans
-        global::shutdown_tracer_provider();
 
         Ok(())
     }

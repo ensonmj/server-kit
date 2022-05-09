@@ -1,6 +1,10 @@
 use crate::{tracer, Result};
 
-pub fn init() -> Result<()> {
+pub fn setup() -> Result<()> {
     dotenv::dotenv().ok();
-    tracer::init()
+    tracer::setup()
+}
+
+pub fn teardown() {
+    tracer::teardown()
 }

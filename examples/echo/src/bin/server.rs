@@ -7,7 +7,7 @@ use server_kit::{global, Server};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    global::init()?;
+    global::setup()?;
 
     let p = nshead::Nshead::default();
     let handler = Handler::new(
@@ -21,7 +21,10 @@ async fn main() -> Result<()> {
     let mut server = Server::new("./conf/server.toml").await?;
     server.with_service(handler);
 
-    Ok(server.start().await?)
+    server.start().await?;
+
+    global::teardown();
+    Ok(())
 }
 
 #[instrument(skip_all)]

@@ -1,6 +1,6 @@
 use anyhow::Result;
-use opentelemetry::global;
 use serde_derive::Deserialize;
+use server_kit::global;
 use tracing::debug;
 use tracing::instrument;
 
@@ -15,7 +15,7 @@ struct Conf {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    server_kit::global::init()?;
+    global::setup()?;
 
     let conf: Conf = conf::read_conf("./conf/client.toml").await?;
     let addr = format!("127.0.0.1:{}", conf.port);
@@ -28,8 +28,7 @@ async fn main() -> Result<()> {
     let resp = stub.echo(req).await?;
     debug!("Receive data: {resp:?}");
 
-    // sending remaining spans
-    global::shutdown_tracer_provider();
+    global::teardown();
     Ok(())
 }
 

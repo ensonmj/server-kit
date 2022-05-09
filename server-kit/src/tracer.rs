@@ -1,5 +1,6 @@
 use std::env;
 
+use opentelemetry::global;
 use time::macros::format_description;
 use tracing_subscriber::fmt::{self, time::LocalTime};
 use tracing_subscriber::prelude::*;
@@ -10,7 +11,7 @@ use tracing_tree::HierarchicalLayer;
 use crate::Result;
 
 // Initialize `tracing` using `opentelemetry-tracing` and configure logging
-pub fn init() -> Result<()> {
+pub fn setup() -> Result<()> {
     // tracer
     let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("server-kit")
@@ -45,4 +46,9 @@ pub fn init() -> Result<()> {
         .init();
 
     Ok(())
+}
+
+pub fn teardown() {
+    // sending remaining spans
+    global::shutdown_tracer_provider();
 }
