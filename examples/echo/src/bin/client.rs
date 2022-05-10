@@ -10,6 +10,7 @@ use server_kit::Message;
 
 #[derive(Deserialize)]
 struct Conf {
+    pub ip: String,
     pub port: u32,
 }
 
@@ -18,7 +19,7 @@ async fn main() -> Result<()> {
     global::setup()?;
 
     let conf: Conf = conf::read_conf("./conf/client.toml").await?;
-    let addr = format!("127.0.0.1:{}", conf.port);
+    let addr = format!("{}:{}", &conf.ip, conf.port);
 
     let mut channel = Channel::<Nshead>::new(addr);
     let req = Message::new(b"hello".to_vec());

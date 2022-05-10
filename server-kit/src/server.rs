@@ -44,7 +44,7 @@ where
 
     #[instrument(skip_all)]
     pub async fn start(&mut self) -> Result<()> {
-        let addr = format!("127.0.0.1:{}", self.conf.port);
+        let addr = format!("{}:{}", &self.conf.ip, self.conf.port);
         debug!("start server on {addr}");
         let listener = TcpListener::bind(&addr).await?;
         loop {

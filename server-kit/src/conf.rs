@@ -8,6 +8,7 @@ use crate::Result;
 
 #[derive(Deserialize)]
 pub struct Conf {
+    pub ip: String,
     pub port: u32,
 }
 
