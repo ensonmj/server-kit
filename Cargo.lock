@@ -560,6 +560,7 @@ dependencies = [
 name = "server-kit"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bytes",
  "dotenv",
  "futures-util",

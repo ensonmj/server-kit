@@ -1,20 +1,19 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use bytes::BytesMut;
 use futures_util::Future;
-use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tracing::debug;
 use tracing::instrument;
 
 use crate::handler::Handler;
+use crate::Message;
 use crate::Result;
 
 pub struct Socket<Fut>
 where
-    Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
+    Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
 {
     pub addr: SocketAddr,
     pub stream: TcpStream,
@@ -27,7 +26,7 @@ where
 
 impl<Fut> Socket<Fut>
 where
-    Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
+    Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
 {
     pub fn new(addr: SocketAddr, stream: TcpStream) -> Self {
         Self {
@@ -45,20 +44,20 @@ where
 
     #[instrument(name = "worker", skip_all, fields(remote_addr = %self.addr))]
     pub async fn process(&mut self) -> Result<()> {
-        // read request
-        let mut buffer = BytesMut::with_capacity(4096);
-        self.stream.read_buf(&mut buffer).await?;
-        debug!("{buffer:?}");
-
         // parse request
-        let buf = self.handler.as_ref().unwrap().parse(&buffer)?;
-        debug!("{buf:?}");
+        let buf = self
+            .handler
+            .as_ref()
+            .unwrap()
+            .parse(&mut self.stream)
+            .await?;
+        debug!("read message: {buf:?}");
 
         // process request
         let msg = self.handler.as_ref().unwrap().process(buf).await?;
 
         // write response
-        debug!("write message");
+        debug!("write message: {msg:?}");
         Ok(self.stream.write_all(&msg).await?)
     }
 }

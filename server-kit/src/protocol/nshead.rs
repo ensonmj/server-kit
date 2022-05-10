@@ -1,14 +1,22 @@
+use std::cmp::Ordering;
+
+use async_trait::async_trait;
 use bytes::BufMut;
 use bytes::BytesMut;
+use tokio::io::AsyncReadExt;
+use tokio::net::TcpStream;
 use tracing::instrument;
 use tracing::{debug, warn};
 
 use super::Protocol;
+use crate::error::ParseError;
 use crate::Error;
+use crate::Message;
 use crate::Result;
 
 pub const NSHEAD_MAGICNUM: u32 = 0xfb709394;
 pub const NSHEAD_LEN: usize = ::std::mem::size_of::<Nshead>();
+const BUF_SIZE: usize = 4096;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -43,6 +51,7 @@ impl Nshead {
             ..Default::default()
         }
     }
+
     pub fn from_u8_slice(bytes: &[u8; ::std::mem::size_of::<Self>()]) -> Self {
         unsafe { std::mem::transmute(*bytes) }
     }
@@ -57,59 +66,82 @@ impl Nshead {
     }
 }
 
+#[async_trait]
 impl Protocol for Nshead {
     #[instrument(skip_all)]
-    fn parse<'buf>(&self, buf: &'buf [u8]) -> Result<&'buf [u8]> {
-        if buf.len() < NSHEAD_LEN {
-            return Err(Error::Err("len too small".to_string()));
+    async fn parse(&self, stream: &mut TcpStream) -> Result<Vec<u8>> {
+        let mut buf = BytesMut::with_capacity(BUF_SIZE);
+        loop {
+            if stream.read_buf(&mut buf).await? == 0 {
+                return Err(Error::Parse(ParseError::UnexpectedEof));
+            }
+            debug!("read from stream: {buf:?}");
+
+            if buf.len() >= NSHEAD_LEN {
+                break;
+            }
         }
-        let data = &buf[..NSHEAD_LEN].try_into().unwrap();
-        let head = Self::from_u8_slice(data);
-        if head.magic_num != NSHEAD_MAGICNUM {
-            warn!("Unexpected header: {:?}", head);
-            return Err(Error::MagicNum(format!(
-                "unexpected header magic_num[{}]",
-                head.magic_num
-            )));
+        let nshead = &buf[..NSHEAD_LEN].try_into().unwrap();
+        let nshead = Self::from_u8_slice(nshead);
+        if nshead.magic_num != NSHEAD_MAGICNUM {
+            warn!("unexpected header: {:?}", nshead);
+            return Err(Error::Parse(ParseError::TryOther));
         }
-        debug!("Receive header: {:?}", head);
+        debug!("receive header: {:?}", nshead);
 
-        let msg_len = NSHEAD_LEN + head.body_len as usize;
-
-        if buf.len() < msg_len {
-            return Err(Error::Err("len too small".to_string()));
+        let _ = buf.split_to(NSHEAD_LEN);
+        loop {
+            match nshead.body_len.cmp(&(buf.len() as u32)) {
+                Ordering::Equal => break,
+                Ordering::Greater => {
+                    if stream.read_buf(&mut buf).await? == 0 {
+                        return Err(Error::Parse(ParseError::UnexpectedEof));
+                    }
+                    debug!("read from stream: {buf:?}");
+                }
+                Ordering::Less => unimplemented!(),
+            };
         }
 
-        Ok(&buf[NSHEAD_LEN..msg_len])
-    }
-
-    #[instrument(skip_all)]
-    fn process_request(&self, buf: &[u8]) -> Result<Vec<u8>> {
-        debug!("receive message");
         Ok(buf.to_vec())
     }
 
     #[instrument(skip_all)]
-    fn pack_response(&self, buf: &[u8]) -> Vec<u8> {
-        let mut buffer = BytesMut::with_capacity(NSHEAD_LEN + buf.len());
-        let head = Self::default_with_len(buf.len() as u32);
-        buffer.put(head.as_u8_slice());
-        buffer.put(buf);
+    fn process_request(&self, buf: Vec<u8>) -> Result<Message> {
+        debug!("receive request");
+        Ok(Message::new(buf.to_vec()))
+    }
+
+    #[instrument(skip_all)]
+    fn pack_response(&self, msg: Message) -> Vec<u8> {
+        let msg = msg.to_vec();
+
+        let mut nshead = Self::default_with_len(msg.len() as u32);
+        nshead.body_len = msg.len() as u32;
+
+        let mut buffer = BytesMut::with_capacity(NSHEAD_LEN + msg.len());
+        buffer.put(nshead.as_u8_slice());
+        buffer.put(msg.as_slice());
 
         buffer.to_vec()
     }
 
     #[instrument(skip_all)]
-    fn process_response(&self, buf: &[u8]) -> Result<Vec<u8>> {
-        Ok(buf.to_vec())
+    fn process_response(&self, buf: Vec<u8>) -> Result<Message> {
+        debug!("receive response");
+        Ok(Message::new(buf.to_vec()))
     }
 
     #[instrument(skip_all)]
-    fn pack_request(&self, buf: &[u8]) -> Vec<u8> {
-        let mut buffer = BytesMut::with_capacity(NSHEAD_LEN + buf.len());
-        let head = Self::default_with_len(buf.len() as u32);
-        buffer.put(head.as_u8_slice());
-        buffer.put(buf);
+    fn pack_request(&self, msg: Message) -> Vec<u8> {
+        let msg = msg.to_vec();
+
+        let mut nshead = Self::default_with_len(msg.len() as u32);
+        nshead.body_len = msg.len() as u32;
+
+        let mut buffer = BytesMut::with_capacity(NSHEAD_LEN + msg.len());
+        buffer.put(nshead.as_u8_slice());
+        buffer.put(msg.as_slice());
 
         buffer.to_vec()
     }

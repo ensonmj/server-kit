@@ -12,11 +12,12 @@ use tracing::{debug, error, trace_span, warn};
 use crate::conf::{self, Conf};
 use crate::handler::Handler;
 use crate::socket::Socket;
+use crate::Message;
 use crate::Result;
 
 pub struct Server<Fut>
 where
-    Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
+    Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
 {
     conf: Conf,
     handler: Option<Arc<Handler<Fut>>>,
@@ -24,7 +25,7 @@ where
 
 impl<Fut> Server<Fut>
 where
-    Fut: Future<Output = Result<Vec<u8>>> + Sync + Send + 'static,
+    Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
 {
     pub async fn new(conf: impl AsRef<Path>) -> Result<Self> {
         let conf: Conf = conf::read_conf(conf).await?;

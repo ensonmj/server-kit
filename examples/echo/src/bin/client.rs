@@ -1,6 +1,7 @@
 use anyhow::Result;
 use serde_derive::Deserialize;
 use server_kit::global;
+use server_kit::Message;
 use tracing::debug;
 use tracing::instrument;
 
@@ -24,7 +25,7 @@ async fn main() -> Result<()> {
     let channel = Channel::new(addr, protocol);
     let mut stub = EchoStub::new(channel);
 
-    let req = b"hello";
+    let req = Message::new(b"hello".to_vec());
     let resp = stub.echo(req).await?;
     debug!("Receive data: {resp:?}");
 
@@ -42,7 +43,7 @@ impl EchoStub {
     }
 
     #[instrument(skip_all)]
-    pub async fn echo(&mut self, req: &[u8]) -> server_kit::Result<Vec<u8>> {
+    pub async fn echo(&mut self, req: Message) -> server_kit::Result<Vec<u8>> {
         self.channel.process(req).await
     }
 }
