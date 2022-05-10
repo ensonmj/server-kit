@@ -11,20 +11,23 @@ use tracing::{debug, error, trace_span, warn};
 
 use crate::conf::{self, Conf};
 use crate::handler::Handler;
+use crate::protocol::Protocol;
 use crate::socket::Socket;
 use crate::Message;
 use crate::Result;
 
-pub struct Server<Fut>
+pub struct Server<P, Fut>
 where
+    P: Protocol + Sync + Send + 'static,
     Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
 {
     conf: Conf,
-    handler: Option<Arc<Handler<Fut>>>,
+    handler: Option<Arc<Handler<P, Fut>>>,
 }
 
-impl<Fut> Server<Fut>
+impl<P, Fut> Server<P, Fut>
 where
+    P: Protocol + Sync + Send + 'static,
     Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
 {
     pub async fn new(conf: impl AsRef<Path>) -> Result<Self> {
@@ -35,7 +38,7 @@ where
         })
     }
 
-    pub fn with_service(&mut self, handler: Handler<Fut>) {
+    pub fn with_service(&mut self, handler: Handler<P, Fut>) {
         self.handler = Some(Arc::new(handler));
     }
 

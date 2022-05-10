@@ -1,13 +1,14 @@
 use anyhow::Result;
 use serde_derive::Deserialize;
-use server_kit::global;
-use server_kit::Message;
 use tracing::debug;
 use tracing::instrument;
 
 use server_kit::channel::Channel;
 use server_kit::conf;
-use server_kit::protocol::nshead;
+use server_kit::global;
+use server_kit::protocol::nshead::Nshead;
+use server_kit::protocol::Protocol;
+use server_kit::Message;
 
 #[derive(Deserialize)]
 struct Conf {
@@ -21,8 +22,7 @@ async fn main() -> Result<()> {
     let conf: Conf = conf::read_conf("./conf/client.toml").await?;
     let addr = format!("127.0.0.1:{}", conf.port);
 
-    let protocol = Box::new(nshead::Nshead::default());
-    let channel = Channel::new(addr, protocol);
+    let channel = Channel::<Nshead>::new(addr);
     let mut stub = EchoStub::new(channel);
 
     let req = Message::new(b"hello".to_vec());
@@ -33,12 +33,18 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-struct EchoStub {
-    channel: Channel,
+struct EchoStub<P>
+where
+    P: Protocol + Sync + Send + 'static,
+{
+    channel: Channel<P>,
 }
 
-impl EchoStub {
-    pub fn new(channel: Channel) -> Self {
+impl<P> EchoStub<P>
+where
+    P: Protocol + Sync + Send + 'static,
+{
+    pub fn new(channel: Channel<P>) -> Self {
         Self { channel }
     }
 

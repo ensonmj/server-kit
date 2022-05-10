@@ -8,11 +8,13 @@ use tracing::debug;
 use tracing::instrument;
 
 use crate::handler::Handler;
+use crate::protocol::Protocol;
 use crate::Message;
 use crate::Result;
 
-pub struct Socket<Fut>
+pub struct Socket<P, Fut>
 where
+    P: Protocol + Sync + Send + 'static,
     Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
 {
     pub addr: SocketAddr,
@@ -21,11 +23,12 @@ where
     pub read_buf: Vec<u8>,
     pub msg_buf: Vec<u8>,
 
-    handler: Option<Arc<Handler<Fut>>>,
+    handler: Option<Arc<Handler<P, Fut>>>,
 }
 
-impl<Fut> Socket<Fut>
+impl<P, Fut> Socket<P, Fut>
 where
+    P: Protocol + Sync + Send + 'static,
     Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
 {
     pub fn new(addr: SocketAddr, stream: TcpStream) -> Self {
@@ -38,7 +41,7 @@ where
         }
     }
 
-    pub fn with_handler(&mut self, h: Arc<Handler<Fut>>) {
+    pub fn with_handler(&mut self, h: Arc<Handler<P, Fut>>) {
         self.handler = Some(h);
     }
 

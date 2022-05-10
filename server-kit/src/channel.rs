@@ -1,16 +1,27 @@
+use std::marker::PhantomData;
+
 use tokio::{io::AsyncWriteExt, net::TcpStream};
 use tracing::instrument;
 
 use crate::{protocol::Protocol, Message, Result};
 
-pub struct Channel {
+pub struct Channel<P>
+where
+    P: Protocol,
+{
     addr: String,
-    protocol: Box<dyn Protocol + Sync + Send + 'static>,
+    _marker: PhantomData<P>,
 }
 
-impl Channel {
-    pub fn new(addr: String, protocol: Box<dyn Protocol + Sync + Send + 'static>) -> Self {
-        Self { addr, protocol }
+impl<P> Channel<P>
+where
+    P: Protocol,
+{
+    pub fn new(addr: String) -> Self {
+        Self {
+            addr,
+            _marker: PhantomData,
+        }
     }
 
     #[instrument(name = "channel", skip_all)]
@@ -18,15 +29,15 @@ impl Channel {
         let mut stream = TcpStream::connect(&self.addr).await?;
 
         // pack request
-        let buf = self.protocol.pack_request(req);
+        let buf = P::pack_request(req);
         // send request
         stream.write_all(&buf).await?;
 
         // parse response
-        let buf = self.protocol.parse(&mut stream).await?;
+        let buf = P::parse(&mut stream).await?;
 
         // process response
-        let buf = self.protocol.process_response(buf)?;
+        let buf = P::process_response(buf)?;
         Ok(buf.to_vec())
     }
 }

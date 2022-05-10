@@ -69,7 +69,7 @@ impl Nshead {
 #[async_trait]
 impl Protocol for Nshead {
     #[instrument(skip_all)]
-    async fn parse(&self, stream: &mut TcpStream) -> Result<Vec<u8>> {
+    async fn parse(stream: &mut TcpStream) -> Result<Vec<u8>> {
         let mut buf = BytesMut::with_capacity(BUF_SIZE);
         loop {
             if stream.read_buf(&mut buf).await? == 0 {
@@ -107,13 +107,13 @@ impl Protocol for Nshead {
     }
 
     #[instrument(skip_all)]
-    fn process_request(&self, buf: Vec<u8>) -> Result<Message> {
+    fn process_request(buf: Vec<u8>) -> Result<Message> {
         debug!("receive request");
         Ok(Message::new(buf.to_vec()))
     }
 
     #[instrument(skip_all)]
-    fn pack_response(&self, msg: Message) -> Vec<u8> {
+    fn pack_response(msg: Message) -> Vec<u8> {
         let msg = msg.to_vec();
 
         let mut nshead = Self::default_with_len(msg.len() as u32);
@@ -127,13 +127,13 @@ impl Protocol for Nshead {
     }
 
     #[instrument(skip_all)]
-    fn process_response(&self, buf: Vec<u8>) -> Result<Message> {
+    fn process_response(buf: Vec<u8>) -> Result<Message> {
         debug!("receive response");
         Ok(Message::new(buf.to_vec()))
     }
 
     #[instrument(skip_all)]
-    fn pack_request(&self, msg: Message) -> Vec<u8> {
+    fn pack_request(msg: Message) -> Vec<u8> {
         let msg = msg.to_vec();
 
         let mut nshead = Self::default_with_len(msg.len() as u32);
