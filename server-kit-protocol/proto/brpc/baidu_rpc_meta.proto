@@ -1,0 +1,64 @@
+syntax="proto2";
+// import "baidu/rpc/options.proto";
+// import "baidu/rpc/policy/streaming_rpc_meta.proto";
+import "brpc/options.proto";
+import "brpc/streaming_rpc_meta.proto";
+
+package baidu.rpc;
+// option java_package="com.baidu.rpc.policy";
+// option java_outer_classname="BaiduRpcProto";
+
+// option cc_generic_services = true;
+
+message RpcMeta {
+    optional RpcRequestMeta request = 1;
+    optional RpcResponseMeta response = 2;
+    optional int32 compress_type = 3;
+    optional int64 correlation_id = 4;
+    optional int32 attachment_size = 5;
+    optional ChunkInfo chunk_info = 6;
+    optional bytes authentication_data = 7;
+    optional StreamSettings stream_settings = 8;   
+}
+
+message RpcRequestMetaExtField {
+    required string key = 1;
+    required string value = 2;
+}
+
+message PartitionInfo {
+    repeated RpcRequestMetaExtField constraints = 1;
+    optional int32 partition_index = 2;
+}
+
+message RpcRequestMeta {
+    required string service_name = 1;
+    required string method_name = 2;
+    optional int64 log_id = 3;
+    optional int64 trace_id = 4;
+    optional int64 span_id = 5;
+    optional int64 parent_span_id = 6;
+    repeated RpcRequestMetaExtField ext_fields = 7;
+    optional int32 timeout_ms = 8;
+    optional uint64 request_code = 9;
+    optional string channel_id = 10;
+    optional ProtocolType protocol_type = 11;
+    optional PropagatedTags propagated_tags = 12;
+}
+
+message RpcResponseMeta {
+    optional int32 error_code = 1;
+    optional string error_text = 2;
+    // brpc client can only see the local mesh server in mesh mode
+    // mesh response contains real remote address for debug or trace
+    optional uint32 real_remote_ip = 3;
+    optional uint32 real_remote_port = 4;
+    // required by la plus load balancer, rpc caller uses this code in la plus load balance.
+    optional int32 load_balancer_code = 5;
+    // brpc server statistics process time, and transport to client
+    optional int32 process_time_us = 6;
+}
+
+service RawRpcService {
+      rpc RawMethod (RpcMeta) returns (RpcMeta);
+};

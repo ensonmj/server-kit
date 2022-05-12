@@ -4,8 +4,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(thiserror::Error, Debug)]
 #[error("{0}")]
 pub enum Error {
-    Err(String),
-    Parse(#[from] ParseError),
+    StrErr(String),
+    Parse(#[from] ParseErr),
+    Svc(#[from] SvcErr),
+    PbErr(#[from] protobuf::Error),
     /// Io error from tcp
     Io(#[from] std::io::Error),
     Toml(#[from] toml::de::Error),
@@ -13,9 +15,17 @@ pub enum Error {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum ParseError {
+pub enum ParseErr {
     #[error("try other protocol")]
     TryOther,
     #[error("unexpected eof")]
     UnexpectedEof,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum SvcErr {
+    #[error("service {0} exist")]
+    Exist(String),
+    #[error("service {0} not exist")]
+    NotExist(String),
 }

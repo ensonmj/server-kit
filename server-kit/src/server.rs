@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 
-use futures_util::Future;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tracing::instrument;
@@ -10,36 +9,33 @@ use tracing::Instrument;
 use tracing::{debug, error, trace_span, warn};
 
 use crate::conf::{self, Conf};
-use crate::handler::Handler;
 use crate::protocol::Protocol;
+use crate::service::ServiceManger;
 use crate::socket::Socket;
-use crate::Message;
 use crate::Result;
+use crate::Service;
 
-pub struct Server<P, Fut>
-where
-    P: Protocol + Sync + Send + 'static,
-    Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
-{
+pub struct Server {
     conf: Conf,
-    handler: Option<Arc<Handler<P, Fut>>>,
+    svc_manager: Arc<ServiceManger>,
 }
 
-impl<P, Fut> Server<P, Fut>
-where
-    P: Protocol + Sync + Send + 'static,
-    Fut: Future<Output = Result<Message>> + Sync + Send + 'static,
-{
+impl Server {
     pub async fn new(conf: impl AsRef<Path>) -> Result<Self> {
         let conf: Conf = conf::read_conf(conf).await?;
         Ok(Self {
             conf,
-            handler: None,
+            svc_manager: Default::default(),
         })
     }
 
-    pub fn with_service(&mut self, handler: Handler<P, Fut>) {
-        self.handler = Some(Arc::new(handler));
+    pub fn add_service<P>(&mut self, protocol: P, svc: Box<dyn Service>) -> Result<()>
+    where
+        P: Protocol,
+    {
+        Arc::get_mut(&mut self.svc_manager)
+            .map(|m| m.add_service(protocol, svc))
+            .unwrap()
     }
 
     #[instrument(skip_all)]
@@ -64,14 +60,13 @@ where
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all)]
     async fn process(&self, addr: SocketAddr, stream: TcpStream) -> Result<()> {
-        let handler = Arc::clone(self.handler.as_ref().unwrap());
+        let svc_manager = Arc::clone(&self.svc_manager);
         if let Err(e) = tokio::spawn(
             async move {
                 let mut socket = Socket::new(addr, stream);
-                socket.with_handler(handler);
-                socket.process().await
+                socket.process(svc_manager).await
             }
             .instrument(trace_span!("worker")),
         )

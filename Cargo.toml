@@ -1,2 +1,7 @@
 [workspace]
-members = ["server-kit", "examples/echo"]
+members = [
+    "server-kit",
+    "server-kit-protocol",
+    "examples/echo_nshead",
+    "examples/echo_brpc",
+]

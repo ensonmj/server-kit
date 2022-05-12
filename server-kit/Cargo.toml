@@ -10,8 +10,10 @@ dotenv = "0.15"
 futures-util = "0.3"
 opentelemetry = { version = "0.17", features = ["rt-tokio"] }
 opentelemetry-jaeger = { version = "0.16", features = ["rt-tokio"] }
+protobuf = "3.0.2"
 serde = "1"
 serde_derive = "1"
+server-kit-protocol = { path = "../server-kit-protocol" }
 thiserror = "1"
 time = { version = "0.3", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
