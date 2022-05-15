@@ -4,7 +4,6 @@ use echo_brpc::EchoServiceImpl;
 use server_kit::protocol::Brpc;
 use tracing::{debug, instrument};
 
-
 use server_kit::{global, Server};
 
 #[tokio::main]
@@ -12,8 +11,9 @@ async fn main() -> Result<()> {
     global::setup()?;
 
     let mut server = Server::new("./conf/server.toml").await?;
+
     let service = EchoServiceImpl::new(echo, another_echo);
-    server.add_service(Brpc, Box::new(service))?;
+    server.add_service(Brpc, service)?;
 
     server.start().await?;
 

@@ -37,9 +37,10 @@ pub struct ServiceManger {
 }
 
 impl ServiceManger {
-    pub fn add_service<P>(&mut self, protocol: P, svc: Box<dyn Service>) -> Result<()>
+    pub fn add_service<P, S>(&mut self, protocol: P, svc: S) -> Result<()>
     where
         P: Protocol,
+        S: Service,
     {
         let type_id = protocol.protocol_id();
         let svc_name = svc.descriptor().full_name();
@@ -54,7 +55,7 @@ impl ServiceManger {
         if protocol_svcs.services.contains_key(svc_name) {
             return Err(SvcErr::Exist(svc_name.to_string()).into());
         }
-        protocol_svcs.services.insert(svc_name, svc);
+        protocol_svcs.services.insert(svc_name, Box::new(svc));
 
         Ok(())
     }

@@ -11,8 +11,9 @@ async fn main() -> Result<()> {
     global::setup()?;
 
     let mut server = Server::new("./conf/server.toml").await?;
-    let service = EchoServiceImpl::new(Box::new(echo));
-    server.add_service(Nshead, Box::new(service))?;
+
+    let service = EchoServiceImpl::new(echo);
+    server.add_service(Nshead, service)?;
 
     server.start().await?;
 

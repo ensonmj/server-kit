@@ -26,9 +26,9 @@ pub trait Protocol: Sync + Send + 'static {
         msg: CommonMsg,
         services: &HashMap<&'static str, Box<dyn Service>>,
     ) -> Result<CommonMsg>;
-    fn pack_response(&self, _msg: CommonMsg) -> Vec<u8>;
+    fn pack_response(&self, msg: CommonMsg) -> Vec<u8>;
 
     // for channel
-    fn pack_request(&self, _msg: CommonMsg) -> Vec<u8>;
+    fn pack_request(&self, msg: CommonMsg) -> Vec<u8>;
     async fn process_response(&self, msg: CommonMsg) -> Result<Vec<u8>>;
 }
