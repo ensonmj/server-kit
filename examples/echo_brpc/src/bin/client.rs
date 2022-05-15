@@ -7,7 +7,6 @@ use tracing::debug;
 use server_kit::channel::Channel;
 use server_kit::conf;
 use server_kit::global;
-
 use server_kit::protocol::Brpc;
 
 use echo_brpc::EchoStub;
@@ -25,7 +24,7 @@ async fn main() -> Result<()> {
     let conf: Conf = conf::read_conf("./conf/client.toml").await?;
     let addr = format!("{}:{}", &conf.ip, conf.port);
 
-    let channel = Channel::new(addr, Brpc);
+    let channel = Channel::<Brpc>::new(addr);
     let stub = EchoStub::new(channel);
 
     let mut req = EchoRequest::new();

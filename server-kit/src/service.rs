@@ -8,7 +8,6 @@ use tracing::debug;
 use tracing::instrument;
 
 use crate::error::ParseErr;
-use crate::error::SvcErr;
 use crate::protocol::Protocol;
 use crate::Error;
 use crate::Result;
@@ -26,46 +25,30 @@ pub trait Service: Sync + Send + 'static {
     async fn call_method(&self, method_name: &str, req: &[u8]) -> Result<Vec<u8>>;
 }
 
-struct ProtocolServices {
-    protocol: Box<dyn Protocol>,
-    services: HashMap<&'static str, Box<dyn Service>>,
-}
-
 #[derive(Default)]
 pub struct ServiceManger {
-    services: HashMap<TypeId, ProtocolServices>,
+    services: HashMap<TypeId, Box<dyn Protocol>>,
 }
 
 impl ServiceManger {
-    pub fn add_service<P, S>(&mut self, protocol: P, svc: S) -> Result<()>
+    pub fn add_service<P, S>(&mut self, svc: S) -> Result<()>
     where
         P: Protocol,
         S: Service,
     {
-        let type_id = protocol.protocol_id();
+        let type_id = P::protocol_id();
         let svc_name = svc.descriptor().full_name();
 
-        let protocol_svcs = self
+        let protocol = self
             .services
             .entry(type_id)
-            .or_insert_with(|| ProtocolServices {
-                services: HashMap::new(),
-                protocol: Box::new(protocol),
-            });
-        if protocol_svcs.services.contains_key(svc_name) {
-            return Err(SvcErr::Exist(svc_name.to_string()).into());
-        }
-        protocol_svcs.services.insert(svc_name, Box::new(svc));
-
-        Ok(())
+            .or_insert_with(|| Box::new(P::default()));
+        protocol.add_service(svc_name.to_string(), Box::new(svc))
     }
 
     #[instrument(skip_all)]
     pub async fn process(&self, stream: &mut TcpStream) -> Result<()> {
-        for protocol_svcs in self.services.values() {
-            let protocol = &protocol_svcs.protocol;
-            let svcs = &protocol_svcs.services;
-
+        for protocol in self.services.values() {
             let msg = match protocol.parse(stream).await {
                 Ok(msg) => msg,
                 Err(Error::Parse(ParseErr::TryOther)) => continue,
@@ -73,7 +56,7 @@ impl ServiceManger {
             };
 
             // parse request
-            let msg = protocol.process_request(msg, svcs).await?;
+            let msg = protocol.process_request(msg).await?;
             let msg = protocol.pack_response(msg);
 
             // write response

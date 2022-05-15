@@ -1,6 +1,5 @@
 use std::any::TypeId;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::fmt;
 
 use async_trait::async_trait;
@@ -23,12 +22,24 @@ pub const NSHEAD_MAGICNUM: u32 = 0xfb709394;
 pub const NSHEAD_SIZE: usize = ::std::mem::size_of::<Header>();
 
 #[derive(Default)]
-pub struct Nshead;
+pub struct Nshead(Option<(String, Box<dyn Service>)>);
 
 #[async_trait]
 impl Protocol for Nshead {
-    fn protocol_id(&self) -> TypeId {
+    fn default() -> Self {
+        Nshead(None)
+    }
+    fn protocol_id() -> TypeId {
         TypeId::of::<Self>()
+    }
+
+    fn add_service(&mut self, svc_name: String, svc: Box<dyn Service>) -> Result<()> {
+        match &self.0 {
+            Some((svc_name, _)) => return Err(SvcErr::Exist(svc_name.clone()).into()),
+            None => self.0 = Some((svc_name, svc)),
+        }
+
+        Ok(())
     }
 
     #[instrument(skip_all)]
@@ -73,12 +84,13 @@ impl Protocol for Nshead {
     async fn process_request(
         &self,
         msg: CommonMsg,
-        services: &HashMap<&'static str, Box<dyn Service>>,
+        // services: &HashMap<&'static str, Box<dyn Service>>,
     ) -> Result<CommonMsg> {
-        let (_, svc) = services
-            .iter()
-            .next()
-            .ok_or_else(|| SvcErr::NotExist("nshead".to_string()))?;
+        // let (_, svc) = services
+        //     .iter()
+        //     .next()
+        //     .ok_or_else(|| SvcErr::NotExist("nshead".to_string()))?;
+        let (_, svc) = self.0.as_ref().unwrap();
         let msg = svc.call_method("", &msg.payload).await?;
         let msg = CommonMsg::new(msg);
         Ok(msg)

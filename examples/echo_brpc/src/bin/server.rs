@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let mut server = Server::new("./conf/server.toml").await?;
 
     let service = EchoServiceImpl::new(echo, another_echo);
-    server.add_service(Brpc, service)?;
+    server.add_service::<Brpc, _>(service)?;
 
     server.start().await?;
 

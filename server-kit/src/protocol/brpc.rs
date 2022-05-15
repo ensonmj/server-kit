@@ -26,13 +26,24 @@ const BODY_START: usize = TAG_SIZE;
 const BODY_SIZE: usize = 4;
 const META_START: usize = BODY_START + BODY_SIZE;
 
-#[derive(Default)]
-pub struct Brpc;
+pub struct Brpc(HashMap<String, Box<dyn Service>>);
 
 #[async_trait]
 impl Protocol for Brpc {
-    fn protocol_id(&self) -> TypeId {
+    fn default() -> Self {
+        Brpc(HashMap::default())
+    }
+    fn protocol_id() -> TypeId {
         TypeId::of::<Self>()
+    }
+
+    fn add_service(&mut self, svc_name: String, svc: Box<dyn Service>) -> Result<()> {
+        let services = &mut self.0;
+        if services.contains_key(&svc_name) {
+            return Err(SvcErr::Exist(svc_name).into());
+        }
+        services.insert(svc_name, svc);
+        Ok(())
     }
 
     #[instrument(skip_all)]
@@ -96,16 +107,14 @@ impl Protocol for Brpc {
     }
 
     #[instrument(skip_all)]
-    async fn process_request(
-        &self,
-        msg: CommonMsg,
-        services: &HashMap<&'static str, Box<dyn Service>>,
-    ) -> crate::Result<CommonMsg> {
+    async fn process_request(&self, msg: CommonMsg) -> crate::Result<CommonMsg> {
         // request
         let mut meta = RpcMeta::new();
         meta.merge_from_bytes(&msg.meta)?;
         let request_meta = meta.request;
         let svc_name = request_meta.service_name();
+
+        let services = &self.0;
         if !services.contains_key(svc_name) {
             return Err(SvcErr::NotExist(svc_name.to_string()).into());
         }

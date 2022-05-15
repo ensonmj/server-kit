@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use tokio::{io::AsyncWriteExt, net::TcpStream};
 use tracing::instrument;
 
@@ -10,35 +12,34 @@ where
     P: Protocol,
 {
     addr: String,
-    // _marker: PhantomData<P>,
-    protocol: P,
+    _marker: PhantomData<P>,
 }
 
 impl<P> Channel<P>
 where
     P: Protocol,
 {
-    pub fn new(addr: String, protocol: P) -> Self {
+    pub fn new(addr: String) -> Self {
         Self {
             addr,
-            // _marker: PhantomData,
-            protocol,
+            _marker: PhantomData,
         }
     }
 
     #[instrument(name = "channel", skip_all)]
     pub async fn process(&self, req: CommonMsg) -> Result<Vec<u8>> {
         let mut stream = TcpStream::connect(&self.addr).await?;
+        let protocol = P::default();
 
         // pack request
-        let buf = self.protocol.pack_request(req);
+        let buf = protocol.pack_request(req);
         // send request
         stream.write_all(&buf).await?;
 
         // parse response
-        let buf = self.protocol.parse(&mut stream).await?;
+        let buf = protocol.parse(&mut stream).await?;
 
         // process response
-        self.protocol.process_response(buf).await
+        protocol.process_response(buf).await
     }
 }

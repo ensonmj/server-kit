@@ -29,13 +29,13 @@ impl Server {
         })
     }
 
-    pub fn add_service<P, S>(&mut self, protocol: P, svc: S) -> Result<()>
+    pub fn add_service<P, S>(&mut self, svc: S) -> Result<()>
     where
         P: Protocol,
         S: Service,
     {
         Arc::get_mut(&mut self.svc_manager)
-            .map(|m| m.add_service(protocol, svc))
+            .map(|m| m.add_service::<P, _>(svc))
             .unwrap()
     }
 

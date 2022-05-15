@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let mut server = Server::new("./conf/server.toml").await?;
 
     let service = EchoServiceImpl::new(echo);
-    server.add_service(Nshead, service)?;
+    server.add_service::<Nshead, _>(service)?;
 
     server.start().await?;
 

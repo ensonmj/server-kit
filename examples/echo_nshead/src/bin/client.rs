@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     let conf: Conf = conf::read_conf("./conf/client.toml").await?;
     let addr = format!("{}:{}", &conf.ip, conf.port);
 
-    let channel = Channel::new(addr, Nshead);
+    let channel = Channel::<Nshead>::new(addr);
     let stub = EchoStub::new(channel);
 
     let mut req = EchoRequest::new();
