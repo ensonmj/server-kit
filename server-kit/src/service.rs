@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::any::TypeId;
 use std::collections::HashMap;
 use tokio::io::AsyncWriteExt;
@@ -12,16 +13,20 @@ use crate::protocol::Protocol;
 use crate::Error;
 use crate::Result;
 
-pub trait ServiceDescriptor {
+pub struct ServiceDescriptor {
+    pub protocol: Box<dyn Protocol>,
     // The name of the service, not including its containing scope.
-    fn name(&self) -> &'static str;
+    // fn name(&self) -> &'static str;
     // The fully-qualified name of the service, scope delimited by periods.
-    fn full_name(&self) -> &'static str;
+    // fn full_name(&self) -> &'static str;
+    pub full_name: &'static str,
 }
 
 #[async_trait]
 pub trait Service: Sync + Send + 'static {
-    fn descriptor(&self) -> &dyn ServiceDescriptor;
+    fn descriptor(&self) -> ServiceDescriptor
+    where
+        Self: Sized;
     async fn call_method(&self, method_name: &str, req: &[u8]) -> Result<Vec<u8>>;
 }
 
@@ -31,18 +36,18 @@ pub struct ServiceManger {
 }
 
 impl ServiceManger {
-    pub fn add_service<P, S>(&mut self, svc: S) -> Result<()>
+    pub fn add_service<S>(&mut self, svc: S) -> Result<()>
     where
-        P: Protocol,
         S: Service,
     {
-        let type_id = P::protocol_id();
-        let svc_name = svc.descriptor().full_name();
-
+        let svc_desc = svc.descriptor();
+        let type_id = svc_desc.protocol.type_id();
         let protocol = self
             .services
             .entry(type_id)
-            .or_insert_with(|| Box::new(P::default()));
+            .or_insert_with(|| svc_desc.protocol);
+
+        let svc_name = svc_desc.full_name;
         protocol.add_service(svc_name.to_string(), Box::new(svc))
     }
 

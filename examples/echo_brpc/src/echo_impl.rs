@@ -4,11 +4,14 @@ use async_trait::async_trait;
 use protobuf::Message;
 use tracing::instrument;
 
-use server_kit::{Result, Service, ServiceDescriptor};
+use server_kit::{
+    protocol::{Brpc, Protocol},
+    Result, Service, ServiceDescriptor,
+};
 
 use crate::{
     echo::{EchoRequest, EchoResponse},
-    EchoService, EchoSeviceDescriptor,
+    EchoService,
 };
 
 pub struct EchoServiceImpl<F1, Fut1, F2, Fut2>
@@ -45,8 +48,11 @@ where
     F2: Fn(EchoRequest) -> Fut2 + Sync + Send + 'static,
     Fut2: Future<Output = Result<EchoResponse>> + Sync + Send + 'static,
 {
-    fn descriptor(&self) -> &dyn ServiceDescriptor {
-        &EchoSeviceDescriptor {}
+    fn descriptor(&self) -> ServiceDescriptor {
+        ServiceDescriptor {
+            protocol: Box::new(Brpc::default()),
+            full_name: "example.echo_brpc",
+        }
     }
 
     async fn call_method(&self, method: &str, req: &[u8]) -> server_kit::Result<Vec<u8>> {

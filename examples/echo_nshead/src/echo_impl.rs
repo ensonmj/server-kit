@@ -4,11 +4,14 @@ use async_trait::async_trait;
 use protobuf::Message;
 use tracing::instrument;
 
-use server_kit::{Result, Service, ServiceDescriptor};
+use server_kit::{
+    protocol::{Nshead, Protocol},
+    Result, Service, ServiceDescriptor,
+};
 
 use crate::{
     echo::{EchoRequest, EchoResponse},
-    EchoService, EchoSeviceDescriptor,
+    EchoService,
 };
 
 pub struct EchoServiceImpl<F1, Fut1>
@@ -47,8 +50,11 @@ where
     F1: Fn(EchoRequest) -> Fut1 + Sync + Send + 'static,
     Fut1: Future<Output = Result<EchoResponse>> + Sync + Send + 'static,
 {
-    fn descriptor(&self) -> &dyn ServiceDescriptor {
-        &EchoSeviceDescriptor {}
+    fn descriptor(&self) -> ServiceDescriptor {
+        ServiceDescriptor {
+            protocol: Box::new(Nshead::default()),
+            full_name: "nshead",
+        }
     }
 
     async fn call_method(&self, _method: &str, req: &[u8]) -> server_kit::Result<Vec<u8>> {

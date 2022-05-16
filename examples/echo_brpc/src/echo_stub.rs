@@ -3,13 +3,16 @@ use protobuf::{Message, MessageField};
 use tracing::{debug, instrument};
 
 use server_kit::{
-    channel::Channel, message::CommonMsg, protocol::Protocol, Result, Service, ServiceDescriptor,
+    channel::Channel,
+    message::CommonMsg,
+    protocol::{Brpc, Protocol},
+    Result, Service, ServiceDescriptor,
 };
 use server_kit_protocol::baidu_rpc_meta::{RpcMeta, RpcRequestMeta};
 
 use crate::{
     echo::{EchoRequest, EchoResponse},
-    EchoService, EchoSeviceDescriptor,
+    EchoService,
 };
 
 pub struct EchoStub<P>
@@ -37,10 +40,10 @@ where
     async fn echo(&self, req: EchoRequest) -> Result<EchoResponse> {
         let mut meta = RpcMeta::new();
         let mut req_meta = RpcRequestMeta::new();
-        let svc_name = EchoSeviceDescriptor {}.full_name().to_string();
+        let svc_name = self.descriptor().full_name;
         let method_name = "echo".to_string();
         debug!("set service name[{svc_name}], method name[{method_name}]");
-        req_meta.set_service_name(svc_name);
+        req_meta.set_service_name(svc_name.to_string());
         req_meta.set_method_name(method_name);
         meta.request = MessageField::some(req_meta);
 
@@ -57,10 +60,10 @@ where
     async fn another_echo(&self, req: EchoRequest) -> Result<EchoResponse> {
         let mut meta = RpcMeta::new();
         let mut req_meta = RpcRequestMeta::new();
-        let svc_name = EchoSeviceDescriptor {}.full_name().to_string();
+        let svc_name = self.descriptor().full_name;
         let method_name = "another_echo".to_string();
         debug!("set service name[{svc_name}], method name[{method_name}]");
-        req_meta.set_service_name(svc_name);
+        req_meta.set_service_name(svc_name.to_string());
         req_meta.set_method_name(method_name);
         meta.request = MessageField::some(req_meta);
 
@@ -79,8 +82,11 @@ impl<P> Service for EchoStub<P>
 where
     P: Protocol + Sync + Send + 'static,
 {
-    fn descriptor(&self) -> &dyn ServiceDescriptor {
-        unimplemented!()
+    fn descriptor(&self) -> ServiceDescriptor {
+        ServiceDescriptor {
+            protocol: Box::new(Brpc::default()),
+            full_name: "example.echo_brpc",
+        }
     }
 
     async fn call_method(&self, _method: &str, _req: &[u8]) -> server_kit::Result<Vec<u8>> {

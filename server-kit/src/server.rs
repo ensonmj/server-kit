@@ -9,7 +9,6 @@ use tracing::Instrument;
 use tracing::{debug, error, trace_span, warn};
 
 use crate::conf::{self, Conf};
-use crate::protocol::Protocol;
 use crate::service::ServiceManger;
 use crate::socket::Socket;
 use crate::Result;
@@ -29,13 +28,12 @@ impl Server {
         })
     }
 
-    pub fn add_service<P, S>(&mut self, svc: S) -> Result<()>
+    pub fn add_service<S>(&mut self, svc: S) -> Result<()>
     where
-        P: Protocol,
         S: Service,
     {
         Arc::get_mut(&mut self.svc_manager)
-            .map(|m| m.add_service::<P, _>(svc))
+            .map(|m| m.add_service(svc))
             .unwrap()
     }
 

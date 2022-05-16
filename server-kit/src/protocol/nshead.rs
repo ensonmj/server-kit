@@ -21,7 +21,6 @@ use crate::Service;
 pub const NSHEAD_MAGICNUM: u32 = 0xfb709394;
 pub const NSHEAD_SIZE: usize = ::std::mem::size_of::<Header>();
 
-#[derive(Default)]
 pub struct Nshead(Option<(String, Box<dyn Service>)>);
 
 #[async_trait]

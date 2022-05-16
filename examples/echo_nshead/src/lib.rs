@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use echo::{EchoRequest, EchoResponse};
-use server_kit::{Result, Service, ServiceDescriptor};
+use server_kit::{Result, Service};
 
 include!(env!("SCHEMA_MOD_RS"));
 
@@ -15,16 +15,4 @@ pub use echo_stub::EchoStub;
 #[async_trait]
 pub trait EchoService: Service {
     async fn echo(&self, buf: EchoRequest) -> Result<EchoResponse>;
-}
-
-pub struct EchoSeviceDescriptor {}
-
-impl ServiceDescriptor for EchoSeviceDescriptor {
-    fn name(&self) -> &'static str {
-        "nshead"
-    }
-
-    fn full_name(&self) -> &'static str {
-        "nshead"
-    }
 }
